@@ -298,7 +298,8 @@ fn build_glfw(config: &Config) {
 
             create_if_not_exist(config.build_dir);
 
-            cmake_config("glfw", config).build();
+            let mut glfwc = cmake_config("glfw", config);
+            glfwc.build();
 
             copy_to_lib("glfw3", &config);
 

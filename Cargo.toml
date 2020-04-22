@@ -1,5 +1,5 @@
 [package]
-name = "sprust"
+name = "shader-one"
 version = "0.1.0"
 authors = ["Richard Underhill <richard.underhill@outlook.com>"]
 edition = "2018"
