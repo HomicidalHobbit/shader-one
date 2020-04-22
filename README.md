@@ -1,2 +1,2 @@
 # shader-one
-Unified shader pipeline based around SPIRV and SPIRV-Tools/Cross
+A unified shader pipeline standalone research project

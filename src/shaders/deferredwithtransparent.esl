@@ -1,0 +1,158 @@
+// Sample EQS shader file for single shader definition
+name = "Deferred with Forward Transparency"
+{
+	version 450
+}
+
+
+
+[shared]
+{
+	const float NEAR_PLANE = 0.1f;
+	const float FAR_PLANE = 256.0f
+
+	float linearDepth(float depth)
+	{
+		float z = depth * 2.0f - 1.0f;
+		return (2.0f * NEAR_PLANE * FAR_PLANE) / (FAR_PLANE+ NEAR_PLANE - z * (FAR_PLANE - NEAR_PLANE));
+	}
+}
+
+Pass "GBuffer" {
+	
+	[vert]
+
+	in vec4 inPos, vec3 inColor, vec3 inNormal;
+	out vec3 outNormal, vec3 outColor, vec3 outWorldPos, outTangent;
+	out gl_PerVertex { vec4 gl_Position };
+	uniform ubo { mat4 projection, mat4 model, mat4 view };
+
+	entry
+	{
+		gl_Position = ubo.projection * ubo.view * inPos;
+		outWorldPos = vec3(ubo.model, inPos);
+		outWorldPos.y = -outWorldPos.y;
+		mat3 mNormal = transpose(inverse(mat3(ubo.model)));
+		outNormal = mNormal * normalize(inNormal);
+		outColor = inColor;
+	}
+	
+	[frag]
+
+	in vec3 inNormal, vec3 inColor, vec3 inWorldPos
+	out vec4 outColor, vec4 outPosition, vec4 outNormal, vec4 outAlbedo
+
+	entry
+	{
+		outPosition = vec4(inWorldPos, 1.0);
+		vec3 N = normalize(inNormal);
+		N.y = -N.y;
+		outNormal = vec4(N, 1.0);
+		outAlbedo.rgb = inColor;
+		outPosition.a = linearDepth(gl_FragCoord.z);
+		outColor = vec4(0.0);
+	}
+}
+
+Pass "Composition" {
+
+	[vert]
+
+	out vec2 outUV;
+	out gl_PerVertex
+	{
+		vec4 gl_Position;
+	};
+		
+	entry
+	{
+		outUV = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+		gl_Position = vec4(outUV* 2.0f - 1.0f, 0.0f, 1.0f);
+	}
+
+	[frag]
+
+	uniform subpassInput samplerPosition, 
+			subpassInput samplerNormal,
+			uniform subpassInput samplerAlbedo
+
+	in vec2 inUV;
+	out vec4 outColor;
+
+	const int NUM_LIGHTS = 64;
+
+	struct Light {
+		vec4 position;
+		vec3 color;
+		float radius;
+	};
+
+	uniform ubo { vec4 viewPos, light lights[NUM_LIGHTS] }
+
+	entry
+	{
+		vec3 fragPos = subpassLoad(samplerPosition).rgb;
+		vec3 normal = subpassLoad(samplerNormal).rgb;
+		vec4 albedo = subpassLoad(samplerAlbedo);
+
+		vec3 fragcolor = albedo.rgb * 0.15;
+
+		for (int i = 0; i < NUM_LIGHTS; ++i)
+		{
+			vec3 L = ubo.lights[i].position.xyz - fragPos;
+			float dist = length(L);
+
+			vec3 V = ubo.viewPos.xyz - fragPos;
+			V = normalize(V);
+			L = normalize(L);
+
+			float atten = ubo.lights[i].radius / (pow(dist, 2.0) + 1.0);
+
+			vec3 N = normalize(normal);
+			float NdotL = max(0.0, dot(N, L));
+			vec3 diff = ubo.lights[i].color * albedo.rgb * NdotL * atten;
+
+			vec3 R = reflect(-L, N);
+			float NdotR = max(0.0, dot(R, V));
+			fragcolor += diff;
+		}
+		outColor = vec4(fragcolor, 1.0);
+	}
+}
+
+Pass "Transparency" {
+
+	[vert]
+
+	in vec4 inPos, vec3 inColor, vec3 inNormal, vec2 inUV
+	out vec3 outColor, vec2 outUV;
+	uniform ubo { mat4 projection, mat4 model, mat4 view }
+
+	entry
+	{
+		outColor = inColor;
+		outUV = inUV;
+		gl_Position = ubo.projection * ubo.view * ubo.model * vec4(inPos.xyz, 1.0);
+	}
+
+	[frag]
+
+	uniform subpassInput samplerPositionDepth;
+	uniform sampler2D samplerTexture;
+
+	in vec3 inColor, vec2 inUV
+	out vec4 outColor;
+
+	entry
+	{
+		float depth = subpassLoad(samplerPositionDepth).a;
+		vec4 sampledColor = texture(samplerTexture, inUV);
+		if ((depth != 0.0) && (linearDepth(gl_FragCoord.z) > depth))
+		{
+			discard;
+		}
+		outColor = sampledColor;
+	}
+}
+
+

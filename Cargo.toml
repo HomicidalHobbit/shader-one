@@ -1,0 +1,16 @@
+[package]
+name = "sprust"
+version = "0.1.0"
+authors = ["Richard Underhill <richard.underhill@outlook.com>"]
+edition = "2018"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+ansi_term = "*"
+cc = "*"
+cmake = "*"
+fs_extra = "*"
+bindgen = "*"
+rm_rf = "*"
