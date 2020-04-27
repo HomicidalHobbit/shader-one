@@ -89,7 +89,7 @@ fn main() {
     }
 
     if cfg!(target_os = "linux") {
-        println!("cargo:rustc-link-lib=dylin=stdc++");
+        println!("cargo:rustc-link-lib=static=stdc++");
     }
 
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
