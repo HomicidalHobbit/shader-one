@@ -65,9 +65,12 @@ fn main() {
     build_vulkan(&config);
 
     cc::Build::new()
+        .compiler("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC\\14.16.27023\\bin\\Hostx64\\x64\\cl.exe")
         .cpp(true)
         .define("ENABLE_OPT", "1")
         .include(&include_dir)
+        .include("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC\\14.16.27023\\include")
+        .include("C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.18362.0\\ucrt")
         .flag_if_supported("-std=c++11")
         .flag_if_supported("/EHsc")
         .flag_if_supported("-fPIC")

@@ -131,7 +131,7 @@ const TBuiltInResource DefaultTBuiltInResource = {
     /* .maxMeshViewCountNV = */ 4,
 
     /* .limits = */
-    {
+    //{
         /* .nonInductiveForLoops = */ 1,
         /* .whileLoops = */ 1,
         /* .doWhileLoops = */ 1,
@@ -141,7 +141,8 @@ const TBuiltInResource DefaultTBuiltInResource = {
         /* .generalSamplerIndexing = */ 1,
         /* .generalVariableIndexing = */ 1,
         /* .generalConstantMatrixVectorIndexing = */ 1,
-    }};
+  //  }
+  };
 
 enum TOptions {
   EOptionNone = 0,
@@ -230,7 +231,7 @@ extern "C" void DeleteProgram(void* program) {
   delete (glslang::TProgram*)program;
 }
 
-extern "C" std::size_t CompileShader(EShLanguage stage, const char* source) {
+extern "C" std::size_t CompileShader(EShLanguage stage, const char* sourcecode) {
   bool compile_failed = false;
   printf("Compiling Shader Stage: %i\n", stage);
   if (!shaderHashes.hash) {
@@ -276,9 +277,9 @@ extern "C" std::size_t CompileShader(EShLanguage stage, const char* source) {
   }
 
   keywordsID = shaderHashes.hash;
-  shaders.emplace_back(source, stage);
+  shaders.emplace_back(sourcecode, stage);
   glslang::TShader& shader = shaders.back().shader;
-  shader.setStrings(&source, 1);
+  shader.setStrings(&sourcecode, 1);
   shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan,
                      100);
   shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
@@ -298,7 +299,7 @@ extern "C" std::size_t CompileShader(EShLanguage stage, const char* source) {
     compile_failed = true;
 
   if (compile_failed) {
-    printf("Compile Failed!\n%s\n%s\n", source, shader.getInfoLog());
+    printf("Compile Failed!\n%s\n%s\n", sourcecode, shader.getInfoLog());
     shaders.pop_back();
     return 0;
   } else {
@@ -343,8 +344,8 @@ extern "C" void Add(glslang::TProgram* program, std::size_t handle) {
   }
 }
 
-extern "C" void SetPreamble(const char* source) {
-  preamble = std::string(source);
+extern "C" void SetPreamble(const char* sourcecode) {
+  preamble = std::string(sourcecode);
 }
 
 extern "C" void ClearPreamble() {
@@ -371,7 +372,7 @@ extern "C" bool Link(glslang::TProgram* program) {
 }
 
 extern "C" void PrintSpirv() {
-  printf("SPIRV size: %lu\n", spirv.size());
+  printf("SPIRV size: %zu\n", spirv.size());
   std::size_t count = 0;
   for (auto& entry : spirv) {
     printf("%.8x ", entry);
