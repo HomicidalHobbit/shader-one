@@ -5,9 +5,9 @@ use bindgen::builder;
 use fs_extra::dir::{copy, CopyOptions};
 use rm_rf::ensure_removed;
 use std::env;
-use std::fs;
 use std::path::Path;
 use std::process::Command;
+use std::{fs, io};
 
 #[cfg(target_os = "linux")]
 const PLATFORM: &str = "linux";
@@ -64,12 +64,16 @@ fn main() {
     build_freetype(&config);
     build_vulkan(&config);
 
+    let toolchain = find_toolchain();
+
     cc::Build::new()
-        .compiler("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC\\14.16.27023\\bin\\Hostx64\\x64\\cl.exe")
+        //       .compiler("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC\\14.16.27023\\bin\\Hostx64\\x64\\cl.exe")
+        .compiler(toolchain.0)
         .cpp(true)
         .define("ENABLE_OPT", "1")
         .include(&include_dir)
-        .include("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC\\14.16.27023\\include")
+        .include(toolchain.1)
+        //        .include("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC\\14.16.27023\\include")
         .include("C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.18362.0\\ucrt")
         .flag_if_supported("-std=c++11")
         .flag_if_supported("/EHsc")
@@ -496,4 +500,52 @@ fn cmake_config(name: &str, config: &Config) -> cmake::Config {
         ck.profile("Release").out_dir(config.build_dir);
     }
     ck
+}
+
+fn find_toolchain() -> (String, String) {
+    let root = Path::new("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC");
+    let kit = Path::new("C:\\Program Files (x86)\\Windows Kits\\10\\Include");
+    let ver = root
+        .join("Auxiliary")
+        .join("Build")
+        .join("Microsoft.VCToolsVersion.default.txt");
+    let version = fs::read_to_string(ver);
+    match version {
+        Ok(v) => {
+            let x: &[_] = &['\r', '\n'];
+            let compiler = root
+                .join("Tools")
+                .join("MSVC")
+                .join(v.trim_end_matches(x))
+                .join("bin")
+                .join("Hostx64")
+                .join("x64")
+                .join("cl.exe");
+
+            let include = root
+                .join("Tools")
+                .join("MSVC")
+                .join(v.trim_end_matches(x))
+                .join("include");
+
+            match fs::read_dir(kit) {
+                Ok(e) => {
+                    let entries = e
+                        .map(|res| res.map(|a| a.path()))
+                        .collect::<Result<Vec<_>, io::Error>>();
+                    entries.unwrap().sort()
+                }
+                Err(_) => {
+                    panic!("Cannot locate Windows 10 SDK!!");
+                }
+            }
+            return (
+                compiler.to_string_lossy().into_owned(),
+                include.to_string_lossy().into_owned(),
+            );
+        }
+        Err(_) => {
+            panic!("Cannot locate VS2017 Build Tools!!");
+        }
+    }
 }
