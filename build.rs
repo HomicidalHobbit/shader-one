@@ -64,24 +64,36 @@ fn main() {
     build_freetype(&config);
     build_vulkan(&config);
 
-    let toolchain = find_toolchain();
-
-    cc::Build::new()
-        //       .compiler("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC\\14.16.27023\\bin\\Hostx64\\x64\\cl.exe")
-        .compiler(toolchain.0)
-        .cpp(true)
-        .define("ENABLE_OPT", "1")
-        .include(&include_dir)
-        .include(toolchain.1)
-        //        .include("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC\\14.16.27023\\include")
-        .include("C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.18362.0\\ucrt")
-        .flag_if_supported("-std=c++11")
-        .flag_if_supported("/EHsc")
-        .flag_if_supported("-fPIC")
-        .file("src/spirv.cpp")
-        .file("src/book.cpp")
-        .file("src/keywords.cpp")
-        .compile("spirvwrapper");
+    if cfg!(target_os = "windows") {
+        let toolchain = find_toolchain();
+        cc::Build::new()
+            //       .compiler("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC\\14.16.27023\\bin\\Hostx64\\x64\\cl.exe")
+            .compiler(toolchain.0)
+            .cpp(true)
+            .define("ENABLE_OPT", "1")
+            .include(&include_dir)
+            .include(toolchain.1)
+            //        .include("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC\\14.16.27023\\include")
+            .include("C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.18362.0\\ucrt")
+            .flag_if_supported("-std=c++11")
+            .flag_if_supported("/EHsc")
+            .flag_if_supported("-fPIC")
+            .file("src/spirv.cpp")
+            .file("src/book.cpp")
+            .file("src/keywords.cpp")
+            .compile("spirvwrapper");
+    } else {
+        cc::Build::new()
+            .cpp(true)
+            .define("ENABLE_OPT", "1")
+            .include(&include_dir)
+            .flag_if_supported("-std=c++11")
+            .flag_if_supported("-fPIC")
+            .file("src/spirv.cpp")
+            .file("src/book.cpp")
+            .file("src/keywords.cpp")
+            .compile("spirvwrapper");
+    }
 
     if cfg!(target_os = "macos") {
         println!("cargo:rustc-link-lib=framework=Cocoa");
