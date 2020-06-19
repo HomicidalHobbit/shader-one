@@ -67,17 +67,13 @@ fn main() {
     if cfg!(target_os = "windows") {
         let toolchain = find_toolchain();
         cc::Build::new()
-            //       .compiler("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC\\14.16.27023\\bin\\Hostx64\\x64\\cl.exe")
             .compiler(toolchain.0)
             .cpp(true)
             .define("ENABLE_OPT", "1")
             .include(&include_dir)
             .include(toolchain.1)
-            //        .include("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC\\14.16.27023\\include")
-            .include("C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.18362.0\\ucrt")
-            .flag_if_supported("-std=c++11")
-            .flag_if_supported("/EHsc")
-            .flag_if_supported("-fPIC")
+            .include(toolchain.2 + "\\ucrt")
+            .flag_if_supported("/EHsc")     
             .file("src/spirv.cpp")
             .file("src/book.cpp")
             .file("src/keywords.cpp")
@@ -514,7 +510,7 @@ fn cmake_config(name: &str, config: &Config) -> cmake::Config {
     ck
 }
 
-fn find_toolchain() -> (String, String) {
+fn find_toolchain() -> (String, String, String) {
     let root = Path::new("C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC");
     let kit = Path::new("C:\\Program Files (x86)\\Windows Kits\\10\\Include");
     let ver = root
@@ -540,12 +536,19 @@ fn find_toolchain() -> (String, String) {
                 .join(v.trim_end_matches(x))
                 .join("include");
 
+            let mut wk = String::new();
+
             match fs::read_dir(kit) {
                 Ok(e) => {
                     let entries = e
                         .map(|res| res.map(|a| a.path()))
                         .collect::<Result<Vec<_>, io::Error>>();
-                    entries.unwrap().sort()
+                    let k = entries.unwrap();
+                    if let Some(w) = k.last() {
+                        if let Some(p) = w.to_str() {
+                            wk = p.to_string();
+                        }
+                    }
                 }
                 Err(_) => {
                     panic!("Cannot locate Windows 10 SDK!!");
@@ -554,6 +557,7 @@ fn find_toolchain() -> (String, String) {
             return (
                 compiler.to_string_lossy().into_owned(),
                 include.to_string_lossy().into_owned(),
+                wk
             );
         }
         Err(_) => {
